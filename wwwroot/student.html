@@ -1,0 +1,183 @@
+﻿
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>LRP - Öğrenci Portalı ✨</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <script>
+        
+        const user = JSON.parse(sessionStorage.getItem('user'));
+
+        if (!user || user.role !== 'Student') {
+            alert("Bu sayfaya sadece öğrenciler erişebilir!");
+            window.location.href = 'login.html';
+        }
+    </script>
+
+    <style>
+        
+        :root {
+            --dusty-pink: #E8A2AF;
+            --dark-pink: #D98994;
+            --soft-pink: #FADADD;
+            --deep-rose: #A66B74;
+            --bg-light-pink: #FFF5F6;
+        }
+
+        body {
+            background-color: var(--bg-light-pink);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #4A3437;
+        }
+
+        
+        .navbar {
+            background: linear-gradient(90deg, var(--deep-rose) 0%, var(--dark-pink) 100%) !important;
+            box-shadow: 0 4px 12px rgba(166, 107, 116, 0.2);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        
+        .card {
+            border: none;
+            border-radius: 25px;
+            box-shadow: 0 15px 35px rgba(217, 137, 148, 0.15);
+        }
+
+        .card-header {
+            background-color: white !important;
+            border-bottom: 2px solid var(--soft-pink);
+            border-radius: 25px 25px 0 0 !important;
+        }
+
+            .card-header h5 {
+                color: var(--deep-rose) !important;
+                font-weight: 700;
+            }
+
+        
+        .table-pink-header {
+            background-color: var(--soft-pink);
+            color: var(--deep-rose);
+        }
+
+        .badge-pink {
+            background-color: var(--dusty-pink) !important;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        
+        .btn-outline-custom {
+            border: 2px solid var(--soft-pink);
+            color: white;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+            .btn-outline-custom:hover {
+                background-color: white;
+                color: var(--deep-rose);
+            }
+
+       
+        .spinner-pink {
+            color: var(--dark-pink);
+        }
+    </style>
+</head>
+<body onload="getMyComputer()">
+
+    
+    <nav class="navbar navbar-dark mb-5 shadow-sm">
+        <div class="container">
+            <span class="navbar-brand">🌸 LRP Öğrenci Portalı</span>
+            <div class="d-flex align-items-center">
+                <span class="text-white me-3 fw-medium" id="welcome-text"></span>
+                <button class="btn btn-outline-custom btn-sm" onclick="logout()">Çıkış Yap</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-white py-3 text-center">
+                        <h5 class="mb-0">Zimmetli Bilgisayar Bilgilerim ✨</h5>
+                    </div>
+                    <div class="card-body" id="info-area">
+                        
+                        <div class="text-center py-5">
+                            <div class="spinner-border spinner-pink" role="status"></div>
+                            <p class="mt-2 text-muted">Cihaz bilgileriniz getiriliyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        
+        document.getElementById('welcome-text').innerText = `Hoş geldin, ${user.fullName}`;
+
+        async function getMyComputer() {
+            const infoArea = document.getElementById('info-area');
+
+            try {
+                const response = await fetch(`/api/student/my-device/${user.username}`);
+
+                if (response.ok) {
+                    const pc = await response.json();
+
+                    infoArea.innerHTML = `
+                            <div class="table-responsive">
+                                <table class="table table-bordered mt-3">
+                                    <tr>
+                                        <th class="table-pink-header" width="40%">Demirbaş Kodu</th>
+                                        <td><span class="badge-pink fs-6">${pc.assetCode}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <th class="fw-bold">Marka / Model</th>
+                                        <td>${pc.brand}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="fw-bold">Bulunduğu Laboratuvar</th>
+                                        <td>${pc.lab ? pc.lab.name : pc.labId + " No'lu Laboratuvar"}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="fw-bold">Özellikler</th>
+                                        <td><small class="text-muted">${pc.processor} İşlemci / ${pc.ram}GB RAM / ${pc.specs || ''}</small></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        `;
+                } else {
+                    infoArea.innerHTML = `
+                            <div class="alert shadow-sm border-0 text-center py-4" style="background-color: var(--soft-pink); color: var(--deep-rose);">
+                                <h6 class="mb-0 fw-bold">Henüz size atanmış bir bilgisayar bulunmamaktadır. 🔍</h6>
+                            </div>`;
+                }
+            } catch (error) {
+                infoArea.innerHTML = `<div class="alert alert-danger">Veri çekilirken bir hata oluştu.</div>`;
+            }
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>

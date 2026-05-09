@@ -1,0 +1,321 @@
+﻿
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>LRP Admin Panel - Pink Edition</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    
+    <script>
+        const user = JSON.parse(sessionStorage.getItem('user'));
+        if (!user || user.role !== 'Admin') {
+            alert("Bu sayfaya erişim yetkiniz yok!");
+            window.location.href = 'login.html';
+        }
+    </script>
+
+    <style>
+       
+        :root {
+            --dusty-pink: #E8A2AF;
+            --dark-pink: #D98994;
+            --soft-pink: #FADADD;
+            --deep-rose: #A66B74;
+            --sidebar-bg: #4A3437;
+        }
+
+        body {
+            background-color: #FFF5F6;
+            color: #4A3437;
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, var(--deep-rose) 0%, var(--sidebar-bg) 100%);
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .card-stats {
+            border: none;
+            border-radius: 15px;
+            color: white !important;
+            transition: all 0.3s ease;
+        }
+
+        .bg-custom-pink {
+            background-color: var(--dusty-pink) !important;
+        }
+
+        .bg-custom-rose {
+            background-color: var(--dark-pink) !important;
+        }
+
+        .bg-custom-soft {
+            background-color: var(--deep-rose) !important;
+        }
+
+        .btn-primary {
+            background-color: var(--dark-pink) !important;
+            border: none;
+        }
+
+            .btn-primary:hover {
+                background-color: var(--deep-rose) !important;
+            }
+
+        .btn-warning {
+            background-color: var(--soft-pink) !important;
+            color: var(--deep-rose) !important;
+            border: none;
+        }
+
+        .btn-danger {
+            background-color: #cc6677 !important;
+            border: none;
+        }
+        
+
+        .nav-link:hover {
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            transform: translateX(5px);
+        }
+
+        .table thead {
+            background-color: var(--soft-pink);
+            color: var(--deep-rose);
+        }
+    </style>
+</head>
+<body>
+    <div class="d-flex">
+        
+        <div class="sidebar text-white p-3 vh-100" style="width: 250px; position: fixed;">
+            <h4 class="text-center fw-bold mt-2">LRP Sistem</h4>
+            <p class="text-center small opacity-75">Admin Paneli</p>
+            <hr>
+            <ul class="nav flex-column gap-2">
+                <li class="nav-item"><a href="#" onclick="loadPage('dashboard')" class="nav-link text-white">🌸 Genel Bakış</a></li>
+                <li class="nav-item"><a href="#" onclick="loadPage('labs')" class="nav-link text-white">🏢 Laboratuvar Yönetimi</a></li>
+                <li class="nav-item"><a href="#" onclick="loadPage('computers')" class="nav-link text-white">💻 Bilgisayar Yönetimi</a></li>
+                <li class="nav-item"><a href="#" onclick="loadPage('students')" class="nav-link text-white">👨‍🎓 Öğrenci Yönetimi</a></li>
+                <li class="nav-item mt-4"><a href="login.html" class="nav-link text-white opacity-75 fw-bold">🚪 Çıkış Yap</a></li>
+            </ul>
+        </div>
+
+        <div id="main-content" class="p-4 w-100" style="margin-left: 250px;"></div>
+    </div>
+
+    <script>
+        let editId = null;
+
+        window.onload = () => loadPage('dashboard');
+
+        async function loadPage(page) {
+            const content = document.getElementById('main-content');
+
+            if (page === 'dashboard') {
+                content.innerHTML = `
+                        <h3 class="fw-bold" style="color: var(--deep-rose);">Hoş geldin, ${user.fullName} ✨</h3>
+                        <div class="row g-4 mt-2">
+                            <div class="col-md-4"><div class="card card-stats bg-custom-pink p-3 shadow-sm">Toplam Cihaz: <h2 id="stat-pc">0</h2></div></div>
+                            <div class="col-md-4"><div class="card card-stats bg-custom-rose p-3 shadow-sm">Aktif Lab: <h2 id="stat-lab">0</h2></div></div>
+                            <div class="col-md-4"><div class="card card-stats bg-custom-soft p-3 shadow-sm">Öğrenci: <h2 id="stat-student">0</h2></div></div>
+                        </div>
+                    `;
+                updateDashboardStats();
+            }
+
+            else if (page === 'labs') {
+                content.innerHTML = `
+                        <h4 class="mb-4 fw-bold" style="color: var(--deep-rose);">Laboratuvar Yönetimi</h4>
+                        <div class="card p-4 shadow-sm mb-4 border-0" style="background-color: var(--soft-pink);">
+                            <h5 class="fw-bold mb-3" style="color: var(--deep-rose);">Yeni Laboratuvar Ekle</h5>
+                            <div class="input-group mb-3">
+                                <input type="text" id="labName" class="form-control" placeholder="Laboratuvar Adı">
+                                <button onclick="addLab()" class="btn btn-primary px-4 fw-bold">Ekle</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive bg-white p-3 rounded shadow-sm border">
+                            <table class="table table-hover">
+                                <thead><tr><th>Lab ID</th><th>Laboratuvar Adı</th><th>İşlemler</th></tr></thead>
+                                <tbody id="lab-table-body"></tbody>
+                            </table>
+                        </div>
+                    `;
+                updateLabTable();
+            }
+
+            else if (page === 'computers') {
+                content.innerHTML = `
+                        <h4 class="mb-4 fw-bold" style="color: var(--deep-rose);">Bilgisayar Yönetimi</h4>
+                        <div class="card p-4 shadow-sm mb-5 border-0">
+                            <h5 id="form-title" class="fw-bold mb-3" style="color: var(--dark-pink);">Yeni Bilgisayar Ekle</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6"><label>Marka</label><input type="text" id="brand" class="form-control"></div>
+                                <div class="col-md-6"><label>Laboratuvar</label><select id="labId" class="form-select"></select></div>
+                                <div class="col-md-6"><label>İşlemci</label><input type="text" id="processor" class="form-control"></div>
+                                <div class="col-md-6"><label>RAM (GB)</label><input type="number" id="ram" class="form-control"></div>
+                                <div class="col-12"><label>Özellikler</label><textarea id="specs" class="form-control"></textarea></div>
+                                <div class="col-12 text-end">
+                                    <button id="cancel-btn" onclick="resetForm()" class="btn btn-secondary d-none">İptal</button>
+                                    <button id="submit-btn" onclick="addComputer()" class="btn btn-primary px-5">Kaydet</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive bg-white p-3 rounded shadow-sm border">
+                            <table class="table table-hover">
+                                <thead><tr><th>Demirbaş</th><th>Marka</th><th>Lab</th><th>İşlemler</th></tr></thead>
+                                <tbody id="pc-table-body"></tbody>
+                            </table>
+                        </div>
+                    `;
+                updateComputerTable();
+                loadLabOptions();
+            }
+
+            else if (page === 'students') {
+                content.innerHTML = `
+                        <h4 class="mb-4 fw-bold" style="color: var(--deep-rose);">Öğrenci Yönetimi</h4>
+                        <div class="card p-4 shadow-sm mb-4 border-0" style="background-color: var(--soft-pink);">
+                            <div class="row g-3">
+                                <div class="col-md-5"><input type="text" id="studUsername" class="form-control" placeholder="Öğrenci No"></div>
+                                <div class="col-md-5"><input type="text" id="studFullName" class="form-control" placeholder="Ad Soyad"></div>
+                                <div class="col-md-2"><button onclick="addStudent()" class="btn btn-primary w-100">Ekle</button></div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm border">
+                            <table class="table">
+                                <thead><tr><th>Öğrenci No</th><th>Ad Soyad</th><th>İşlemler</th></tr></thead>
+                                <tbody id="student-table-body"></tbody>
+                            </table>
+                        </div>
+                    `;
+                updateStudentTable();
+            }
+        }
+
+       
+
+        async function updateLabTable() {
+            const response = await fetch('/api/labs');
+            const labs = await response.json();
+            const tableBody = document.getElementById('lab-table-body');
+            tableBody.innerHTML = labs.map(lab => `
+                    <tr>
+                        <td><span class="badge bg-custom-rose">${lab.id}</span></td>
+                        <td><b>${lab.name}</b></td>
+                        <td>
+                            <button onclick="prepareLabEdit(${lab.id}, '${encodeURIComponent(lab.name)}')" class="btn btn-sm btn-warning">✏️</button>
+                            <button onclick="deleteLab(${lab.id})" class="btn btn-sm btn-danger">🗑️</button>
+                        </td>
+                    </tr>`).join('');
+        }
+
+        async function addLab() {
+            const name = document.getElementById('labName').value;
+            if (!name) return;
+            await fetch('/api/labs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+            document.getElementById('labName').value = '';
+            updateLabTable();
+        }
+
+        async function deleteLab(id) {
+            if (confirm("Bu laboratuvarı silmek istediğine emin misin? (İçindeki PC'ler boşa çıkacaktır)")) {
+                const res = await fetch(`/api/labs/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    updateLabTable();
+                    updateDashboardStats();
+                }
+            }
+        }
+
+        async function prepareLabEdit(id, encodedName) {
+            const oldName = decodeURIComponent(encodedName);
+            const newName = prompt("Laboratuvarın yeni adını girin:", oldName);
+            if (!newName || newName === oldName) return;
+
+            await fetch(`/api/labs/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName })
+            });
+            updateLabTable();
+        }
+
+        
+        async function updateDashboardStats() {
+            const pc = await (await fetch('/api/computers')).json();
+            const lab = await (await fetch('/api/labs')).json();
+            const stud = await (await fetch('/api/stats/student-count')).json();
+            if (document.getElementById('stat-pc')) {
+                document.getElementById('stat-pc').innerText = pc.length;
+                document.getElementById('stat-lab').innerText = lab.length;
+                document.getElementById('stat-student').innerText = stud;
+            }
+        }
+
+        async function loadLabOptions() {
+            const labs = await (await fetch('/api/labs')).json();
+            const select = document.getElementById('labId');
+            if (select) select.innerHTML = '<option value="">-- Lab Seçin --</option>' + labs.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+        }
+
+        async function updateComputerTable() {
+            const pcs = await (await fetch('/api/computers')).json();
+            document.getElementById('pc-table-body').innerHTML = pcs.map(pc => `
+                    <tr>
+                        <td><span class="badge bg-custom-pink">${pc.assetCode}</span></td>
+                        <td><b>${pc.brand}</b></td>
+                        <td>${pc.lab ? pc.lab.name : 'Sahipsiz'}</td>
+                        <td>
+                            <button onclick="assignStudentPrompt(${pc.id})" class="btn btn-sm btn-primary">👤</button>
+                            <button onclick="deleteComputer(${pc.id})" class="btn btn-sm btn-danger">🗑️</button>
+                        </td>
+                    </tr>`).join('');
+        }
+
+        async function updateStudentTable() {
+            const studs = await (await fetch('/api/users/students')).json();
+            document.getElementById('student-table-body').innerHTML = studs.map(s => `
+                    <tr>
+                        <td><b>${s.username}</b></td>
+                        <td>${s.fullName}</td>
+                        <td><button onclick="deleteStudent(${s.id})" class="btn btn-sm btn-danger">🗑️ Sil</button></td>
+                    </tr>`).join('');
+        }
+
+        async function deleteComputer(id) { if (confirm("Silinsin mi?")) { await fetch(`/api/computers/${id}`, { method: 'DELETE' }); updateComputerTable(); } }
+        async function deleteStudent(id) { if (confirm("Silinsin mi?")) { await fetch(`/api/users/students/${id}`, { method: 'DELETE' }); updateStudentTable(); } }
+        async function addComputer() { 
+            const data = {
+                brand: document.getElementById('brand').value,
+                labId: parseInt(document.getElementById('labId').value),
+                processor: document.getElementById('processor').value,
+                ram: parseInt(document.getElementById('ram').value),
+                specs: document.getElementById('specs').value
+            };
+            await fetch('/api/computers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            loadPage('computers');
+        }
+        async function addStudent() { 
+            const data = {
+                username: document.getElementById('studUsername').value,
+                fullName: document.getElementById('studFullName').value
+            };
+            await fetch('/api/users/students', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            updateStudentTable();
+        }
+        async function assignStudentPrompt(pcId) {
+            const studentNo = prompt("Zimmetlenecek Öğrenci No:");
+            const fullName = prompt("Öğrencinin Adı Soyadı:");
+            if (studentNo && fullName) {
+                await fetch(`/api/assign?pcId=${pcId}&studentNo=${studentNo}&fullName=${encodeURIComponent(fullName)}`, { method: 'POST' });
+                updateComputerTable();
+            }
+        }
+        function resetForm() { loadPage('computers'); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+﻿
+
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>LRP - Giriş Yap</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        
+        :root {
+            --dusty-pink: #E8A2AF;
+            --dark-pink: #D98994;
+            --soft-pink: #FADADD;
+            --deep-rose: #A66B74;
+            --bg-light-pink: #FFF5F6;
+        }
+
+        body {
+            background-color: var(--bg-light-pink) !important;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .login-card {
+            max-width: 400px;
+            background: white;
+            padding: 40px;
+            border-radius: 25px;
+            box-shadow: 0 15px 35px rgba(217, 137, 148, 0.2) !important;
+            border: none !important;
+        }
+
+        h3 {
+            color: var(--deep-rose);
+            font-weight: 700;
+        }
+
+        .flower-icon {
+            font-size: 40px;
+            display: block;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .form-control {
+            border-radius: 12px;
+            border: 2px solid var(--soft-pink);
+            padding: 12px;
+        }
+
+            .form-control:focus {
+                border-color: var(--dusty-pink);
+                box-shadow: none;
+                background-color: var(--bg-light-pink);
+            }
+
+        .btn-pink {
+            background-color: var(--dark-pink);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+            .btn-pink:hover {
+                background-color: var(--deep-rose);
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(166, 107, 116, 0.4);
+                color: white;
+            }
+
+        .footer-text {
+            color: var(--deep-rose);
+            opacity: 0.7;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+
+<body class="d-flex align-items-center vh-100">
+    <div class="container login-card text-center">
+        <span class="flower-icon">🌸</span>
+        <h3 class="mb-4">LRP Sistemi</h3>
+
+        <input type="text" id="username" class="form-control mb-3" placeholder="Kullanıcı Adı">
+        <input type="password" id="password" class="form-control mb-3" placeholder="Şifre">
+
+        <button onclick="handleLogin()" class="btn btn-pink w-100">Giriş Yap</button>
+
+        <div class="mt-4 footer-text">
+            Medine Sarımustafaoğlu &copy; 2026
+        </div>
+    </div>
+
+    <script>
+        async function handleLogin() {
+            const user = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+
+            if (!user.username || !user.password) {
+                alert("Lütfen tüm alanları doldurun!");
+                return;
+            }
+
+            try {
+                
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(user)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                   
+                    sessionStorage.setItem('user', JSON.stringify(data));
+
+                    
+                    window.location.href = data.redirect || data.Redirect;
+                } else {
+                    alert("Kullanıcı adı veya şifre hatalı!");
+                }
+            } catch (error) {
+                console.error("Giriş Hatası:", error);
+                alert("Sunucuya bağlanılamadı!");
+            }
+        }
+
+        
+        document.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+@LRP_Project_Vize_MedineSarımustafaoğlu_HostAddress = http://localhost:5296
+
+GET {{LRP_Project_Vize_MedineSarımustafaoğlu_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
