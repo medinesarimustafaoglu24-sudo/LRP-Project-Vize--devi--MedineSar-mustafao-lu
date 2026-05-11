@@ -4,10 +4,9 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>LRP Admin Panel - Pink Edition</title>
+    <title>LRP Admin Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    
     <script>
         const user = JSON.parse(sessionStorage.getItem('user'));
         if (!user || user.role !== 'Admin') {
@@ -17,7 +16,6 @@
     </script>
 
     <style>
-       
         :root {
             --dusty-pink: #E8A2AF;
             --dark-pink: #D98994;
@@ -74,7 +72,6 @@
             background-color: #cc6677 !important;
             border: none;
         }
-        
 
         .nav-link:hover {
             background: rgba(255,255,255,0.15);
@@ -86,11 +83,14 @@
             background-color: var(--soft-pink);
             color: var(--deep-rose);
         }
+
+        .border-pink {
+            border-color: var(--soft-pink) !important;
+        }
     </style>
 </head>
 <body>
     <div class="d-flex">
-        
         <div class="sidebar text-white p-3 vh-100" style="width: 250px; position: fixed;">
             <h4 class="text-center fw-bold mt-2">LRP Sistem</h4>
             <p class="text-center small opacity-75">Admin Paneli</p>
@@ -107,8 +107,26 @@
         <div id="main-content" class="p-4 w-100" style="margin-left: 250px;"></div>
     </div>
 
+    <div class="modal fade" id="assignModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header border-0 bg-custom-pink text-white" style="border-radius: 20px 20px 0 0;">
+                    <h5 class="modal-title fw-bold">🌸 Öğrenci Seç</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="text" id="modalStudentSearch" class="form-control mb-3 border-pink" placeholder="Öğrenci ara..." onkeyup="filterModalStudents()">
+                    <div class="list-group list-group-flush" id="modalStudentList" style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
         let editId = null;
+        let currentAssignPcId = null; // Zimmetlenecek PC'yi aklında tutar
 
         window.onload = () => loadPage('dashboard');
 
@@ -126,7 +144,6 @@
                     `;
                 updateDashboardStats();
             }
-
             else if (page === 'labs') {
                 content.innerHTML = `
                         <h4 class="mb-4 fw-bold" style="color: var(--deep-rose);">Laboratuvar Yönetimi</h4>
@@ -146,7 +163,6 @@
                     `;
                 updateLabTable();
             }
-
             else if (page === 'computers') {
                 content.innerHTML = `
                         <h4 class="mb-4 fw-bold" style="color: var(--deep-rose);">Bilgisayar Yönetimi</h4>
@@ -174,7 +190,6 @@
                 updateComputerTable();
                 loadLabOptions();
             }
-
             else if (page === 'students') {
                 content.innerHTML = `
                         <h4 class="mb-4 fw-bold" style="color: var(--deep-rose);">Öğrenci Yönetimi</h4>
@@ -187,7 +202,7 @@
                         </div>
                         <div class="bg-white p-3 rounded shadow-sm border">
                             <table class="table">
-                                <thead><tr><th>Öğrenci No</th><th>Ad Soyad</th><th>İşlemler</th></tr></thead>
+                                <thead><tr><th>Öğrenci No</th><th>Ad Soyad</th><th>Zimmetli Cihaz</th><th>İşlemler</th></tr></thead>
                                 <tbody id="student-table-body"></tbody>
                             </table>
                         </div>
@@ -196,55 +211,69 @@
             }
         }
 
-       
-
-        async function updateLabTable() {
-            const response = await fetch('/api/labs');
-            const labs = await response.json();
-            const tableBody = document.getElementById('lab-table-body');
-            tableBody.innerHTML = labs.map(lab => `
+        // --- BİLGİSAYAR TABLOSU VE MODAL TETİKLEME ---
+        async function updateComputerTable() {
+            const pcs = await (await fetch('/api/computers')).json();
+            document.getElementById('pc-table-body').innerHTML = pcs.map(pc => `
                     <tr>
-                        <td><span class="badge bg-custom-rose">${lab.id}</span></td>
-                        <td><b>${lab.name}</b></td>
+                        <td><span class="badge bg-custom-pink">${pc.assetCode}</span></td>
+                        <td><b>${pc.brand}</b></td>
+                        <td>${pc.lab ? pc.lab.name : 'Sahipsiz'}</td>
                         <td>
-                            <button onclick="prepareLabEdit(${lab.id}, '${encodeURIComponent(lab.name)}')" class="btn btn-sm btn-warning">✏️</button>
-                            <button onclick="deleteLab(${lab.id})" class="btn btn-sm btn-danger">🗑️</button>
+                            <button onclick="openAssignModal(${pc.id})" class="btn btn-sm btn-primary">👤</button>
+                            <button onclick="deleteComputer(${pc.id})" class="btn btn-sm btn-danger">🗑️</button>
                         </td>
                     </tr>`).join('');
         }
 
-        async function addLab() {
-            const name = document.getElementById('labName').value;
-            if (!name) return;
-            await fetch('/api/labs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-            document.getElementById('labName').value = '';
-            updateLabTable();
+        // 1. Modalı açar ve öğrencileri listeler
+        async function openAssignModal(pcId) {
+            currentAssignPcId = pcId;
+            const response = await fetch('/api/users/students');
+            const students = await response.json();
+
+            const listContainer = document.getElementById('modalStudentList');
+            listContainer.innerHTML = students.map(s => `
+                    <button onclick="confirmAssignment(${s.id})" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center border-0 mb-1 rounded">
+                        <div>
+                            <strong class="text-dark">${s.fullName}</strong><br>
+                            <small class="text-muted">${s.username}</small>
+                        </div>
+                        <span class="badge bg-custom-pink rounded-pill">Seç</span>
+                    </button>
+                `).join('');
+
+            const assignModal = new bootstrap.Modal(document.getElementById('assignModal'));
+            assignModal.show();
         }
 
-        async function deleteLab(id) {
-            if (confirm("Bu laboratuvarı silmek istediğine emin misin? (İçindeki PC'ler boşa çıkacaktır)")) {
-                const res = await fetch(`/api/labs/${id}`, { method: 'DELETE' });
-                if (res.ok) {
-                    updateLabTable();
-                    updateDashboardStats();
+        // 2. Seçilen öğrenciyi veritabanına zimmetler
+        async function confirmAssignment(studentId) {
+            if (!currentAssignPcId) return;
+            try {
+                const response = await fetch(`/api/assign-direct?pcId=${currentAssignPcId}&studentId=${studentId}`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('assignModal')).hide();
+                    updateComputerTable();
+                    alert("Zimmetleme başarıyla tamamlandı! ✨");
                 }
+            } catch (err) {
+                console.error("Zimmet hatası:", err);
             }
         }
 
-        async function prepareLabEdit(id, encodedName) {
-            const oldName = decodeURIComponent(encodedName);
-            const newName = prompt("Laboratuvarın yeni adını girin:", oldName);
-            if (!newName || newName === oldName) return;
-
-            await fetch(`/api/labs/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newName })
-            });
-            updateLabTable();
+        // 3. Modal içinde arama yapma
+        function filterModalStudents() {
+            let input = document.getElementById("modalStudentSearch").value.toLowerCase();
+            let items = document.getElementById("modalStudentList").getElementsByTagName("button");
+            for (let item of items) {
+                item.style.display = item.innerText.toLowerCase().includes(input) ? "" : "none";
+            }
         }
 
-        
+        // --- DİĞER FONKSİYONLAR ---
         async function updateDashboardStats() {
             const pc = await (await fetch('/api/computers')).json();
             const lab = await (await fetch('/api/labs')).json();
@@ -256,39 +285,47 @@
             }
         }
 
-        async function loadLabOptions() {
+        async function updateLabTable() {
             const labs = await (await fetch('/api/labs')).json();
-            const select = document.getElementById('labId');
-            if (select) select.innerHTML = '<option value="">-- Lab Seçin --</option>' + labs.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
-        }
-
-        async function updateComputerTable() {
-            const pcs = await (await fetch('/api/computers')).json();
-            document.getElementById('pc-table-body').innerHTML = pcs.map(pc => `
+            document.getElementById('lab-table-body').innerHTML = labs.map(lab => `
                     <tr>
-                        <td><span class="badge bg-custom-pink">${pc.assetCode}</span></td>
-                        <td><b>${pc.brand}</b></td>
-                        <td>${pc.lab ? pc.lab.name : 'Sahipsiz'}</td>
+                        <td><span class="badge bg-custom-rose">${lab.id}</span></td>
+                        <td><b>${lab.name}</b></td>
                         <td>
-                            <button onclick="assignStudentPrompt(${pc.id})" class="btn btn-sm btn-primary">👤</button>
-                            <button onclick="deleteComputer(${pc.id})" class="btn btn-sm btn-danger">🗑️</button>
+                            <button onclick="prepareLabEdit(${lab.id}, '${encodeURIComponent(lab.name)}')" class="btn btn-sm btn-warning">✏️</button>
+                            <button onclick="deleteLab(${lab.id})" class="btn btn-sm btn-danger">🗑️</button>
                         </td>
                     </tr>`).join('');
         }
 
         async function updateStudentTable() {
             const studs = await (await fetch('/api/users/students')).json();
-            document.getElementById('student-table-body').innerHTML = studs.map(s => `
-                    <tr>
-                        <td><b>${s.username}</b></td>
-                        <td>${s.fullName}</td>
-                        <td><button onclick="deleteStudent(${s.id})" class="btn btn-sm btn-danger">🗑️ Sil</button></td>
-                    </tr>`).join('');
+            document.getElementById('student-table-body').innerHTML = studs.map(s => {
+                const pcList = s.computers && s.computers.length > 0
+                    ? s.computers.map(pc => `<span class="badge bg-custom-pink me-1">${pc.assetCode}</span>`).join('')
+                    : '<span class="text-muted small">Zimmet Yok</span>';
+                return `<tr><td><b>${s.username}</b></td><td>${s.fullName}</td><td>${pcList}</td><td><button onclick="deleteStudent(${s.id})" class="btn btn-sm btn-danger">🗑️ Sil</button></td></tr>`;
+            }).join('');
         }
 
-        async function deleteComputer(id) { if (confirm("Silinsin mi?")) { await fetch(`/api/computers/${id}`, { method: 'DELETE' }); updateComputerTable(); } }
-        async function deleteStudent(id) { if (confirm("Silinsin mi?")) { await fetch(`/api/users/students/${id}`, { method: 'DELETE' }); updateStudentTable(); } }
-        async function addComputer() { 
+        async function addLab() {
+            const name = document.getElementById('labName').value;
+            if (!name) return;
+            await fetch('/api/labs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+            document.getElementById('labName').value = '';
+            updateLabTable();
+        }
+
+        async function addStudent() {
+            const data = {
+                username: document.getElementById('studUsername').value,
+                fullName: document.getElementById('studFullName').value
+            };
+            await fetch('/api/users/students', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            updateStudentTable();
+        }
+
+        async function addComputer() {
             const data = {
                 brand: document.getElementById('brand').value,
                 labId: parseInt(document.getElementById('labId').value),
@@ -299,22 +336,17 @@
             await fetch('/api/computers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             loadPage('computers');
         }
-        async function addStudent() { 
-            const data = {
-                username: document.getElementById('studUsername').value,
-                fullName: document.getElementById('studFullName').value
-            };
-            await fetch('/api/users/students', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-            updateStudentTable();
+
+        async function loadLabOptions() {
+            const labs = await (await fetch('/api/labs')).json();
+            const select = document.getElementById('labId');
+            if (select) select.innerHTML = '<option value="">-- Lab Seçin --</option>' + labs.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
         }
-        async function assignStudentPrompt(pcId) {
-            const studentNo = prompt("Zimmetlenecek Öğrenci No:");
-            const fullName = prompt("Öğrencinin Adı Soyadı:");
-            if (studentNo && fullName) {
-                await fetch(`/api/assign?pcId=${pcId}&studentNo=${studentNo}&fullName=${encodeURIComponent(fullName)}`, { method: 'POST' });
-                updateComputerTable();
-            }
-        }
+
+        async function deleteComputer(id) { if (confirm("Silinsin mi?")) { await fetch(`/api/computers/${id}`, { method: 'DELETE' }); updateComputerTable(); } }
+        async function deleteStudent(id) { if (confirm("Silinsin mi?")) { await fetch(`/api/users/students/${id}`, { method: 'DELETE' }); updateStudentTable(); } }
+        async function deleteLab(id) { if (confirm("Lab silinsin mi?")) { await fetch(`/api/labs/${id}`, { method: 'DELETE' }); updateLabTable(); updateDashboardStats(); } }
+
         function resetForm() { loadPage('computers'); }
     </script>
 </body>
