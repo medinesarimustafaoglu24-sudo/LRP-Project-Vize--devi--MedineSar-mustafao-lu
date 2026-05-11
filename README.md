@@ -1,9 +1,7 @@
 ﻿
 
 
-# LRP - Laboratuvar Rehber Portalı 
 
-Bu proje, bir üniversite laboratuvarındaki bilgisayar envanterini yönetmek, cihazları öğrencilere zimmetlemek ve teknik detayları takip etmek amacıyla geliştirilmiş bir **ASP.NET Core** web uygulamasıdır. Proje, Bilgisayar Teknolojisi programı vize ödevi kapsamında hazırlanmıştır.
 
 ## Kullanılan Teknolojiler
 - **Backend:** .NET 8 (ASP.NET Core Web API)
